@@ -11,8 +11,11 @@ rm(list=ls())
 
 ### load packages
 library(readxl)
+library(tidyverse)
 
 ### read in data
-conjoint_data <- read_excel("data/SOTOUK_225981_CJ_Q23_20220112.xlsx")
-survey_data <- read_excel("data/SOTOUK_225981_iI_20211229 todo_ponde.xlsx")
-educ_data <- read_excel("data/EDUCATION LEVEL.xlsm")
+df <- read_excel("data/Importações e ExportaçõesFINAL.xlsx")
+
+# Create new variable "state"
+df <- df %>% 
+  mutate(state = factor(substring(Cidade, nchar(Cidade)-1, nchar(Cidade))))
