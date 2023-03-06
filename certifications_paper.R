@@ -9,13 +9,33 @@
 ### WARNING: This will clear your workspace
 rm(list=ls())
 
-### load packages
+### Load packages
 library(readxl)
 library(tidyverse)
+library(stringr)
+#remotes::install_github("curso-r/munifacil")
+library(munifacil)
 
-### read in data
+### Read in data
 df <- read_excel("data/Importações e ExportaçõesFINAL.xlsx")
+
+#### Rename variables to make them R-friendly
+
+# "Cidade" into "mun"
+df <- df %>%
+  rename(mun = Cidade)
+
+### Creating new variables
 
 # Create new variable "state"
 df <- df %>% 
-  mutate(state = factor(substring(Cidade, nchar(Cidade)-1, nchar(Cidade))))
+  mutate(state = factor(substring(mun, nchar(mun)-1, nchar(mun))))
+
+# Delete characters from "mun" that represent state name 
+df <- df %>% 
+  mutate(mun = str_sub(mun, end = -6))
+
+# Create variable with IBGE municipality code
+
+
+
