@@ -1,5 +1,5 @@
 #####
-## Trust and Demand for Clientelism: Study 1
+## Defending the environment or curbing imports? The trade effects of government-backed voluntary certifications
 ## Authors: Rodrigo Cezar, Eduardo Mello, and Juliana Camargo
 ## Contact: Eduardo.Mello@fgv.br  
 ## This version: 2023-03-06
@@ -36,6 +36,24 @@ df <- df %>%
   mutate(mun = str_sub(mun, end = -6))
 
 # Create variable with IBGE municipality code
+sua_base <- readr::read_csv(arquivo) %>% 
+  dplyr::select(
+    municipio = 1, 
+    uf = 3,
+    ibge = 2
+  ) %>% 
+  dplyr::distinct(municipio, .keep_all = TRUE)
+
+resultado <- sua_base %>% 
+  limpar_colunas(municipio, uf) %>% 
+  # cria uma coluna "uf_join"
+  incluir_codigo_ibge()
+
+resultado %>% 
+  dplyr::filter(is.na(id_municipio))
+
+resultado %>% 
+  dplyr::count(ibge == id_municipio)
 
 
 
