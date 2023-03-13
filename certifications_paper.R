@@ -36,6 +36,10 @@ df <- df %>%
   mutate(mun = str_sub(mun, end = -6))
 
 # Create variable with IBGE municipality code
+
+arquivo <- system.file("extdata/exemplo.csv", package = "munifacil")
+
+
 sua_base <- readr::read_csv(arquivo) %>% 
   dplyr::select(
     municipio = 1, 
@@ -43,6 +47,8 @@ sua_base <- readr::read_csv(arquivo) %>%
     ibge = 2
   ) %>% 
   dplyr::distinct(municipio, .keep_all = TRUE)
+
+municipios_ibge <- merge(municipios, ibge_codes, by = "NM_MUNICIPIO")
 
 resultado <- sua_base %>% 
   limpar_colunas(municipio, uf) %>% 
