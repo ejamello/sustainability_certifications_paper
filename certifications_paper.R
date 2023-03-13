@@ -21,23 +21,23 @@ df <- read_excel("data/Importações e ExportaçõesFINAL.xlsx")
 
 #### Rename variables to make them R-friendly
 
-# "Cidade" into "mun"
+# "Cidade" into "municipio"
 df <- df %>%
-  rename(mun = Cidade)
+  rename(municipio = Cidade)
 
 ### Creating new variables
 
 # Create new variable "state"
 df <- df %>% 
-  mutate(state = factor(substring(mun, nchar(mun)-1, nchar(mun))))
+  mutate(state = factor(substring(municipio, nchar(municipio)-1, nchar(municipio))))
 
-# Delete characters from "mun" that represent state name 
+# Delete characters from "municipio" that represent state name 
 df <- df %>% 
-  mutate(mun = str_sub(mun, end = -6))
+  mutate(municipio = str_sub(municipio, end = -6))
 
 # Create variable with IBGE municipality code
-
 arquivo <- system.file("extdata/exemplo.csv", package = "munifacil")
+df$municipio <- toupper(df$municipio)
 
 
 sua_base <- readr::read_csv(arquivo) %>% 
@@ -48,7 +48,13 @@ sua_base <- readr::read_csv(arquivo) %>%
   ) %>% 
   dplyr::distinct(municipio, .keep_all = TRUE)
 
-municipios_ibge <- merge(municipios, ibge_codes, by = "NM_MUNICIPIO")
+municipio_df <- unique(df$municipio)
+municipio_sua_base <- unique(sua_base$municipio)
+common_municipios <- intersect(municipio_df, municipio_sua_base)
+print(municipio_df)
+      
+
+#df <- merge(df, sua_base, by = "municipio")
 
 resultado <- sua_base %>% 
   limpar_colunas(municipio, uf) %>% 
