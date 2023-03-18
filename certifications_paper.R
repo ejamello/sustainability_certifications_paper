@@ -13,19 +13,48 @@ rm(list=ls())
 library(readxl)
 library(tidyverse)
 library(stringr)
-#remotes::install_github("curso-r/munifacil")
 # devtools::install_github("hersonpc/isgr")
-library(munifacil)
 library(isgr)
+library(sf)
+library(writexl)
 
 ### Read in data
 df <- read_excel("data/Importações e ExportaçõesFINAL.xlsx")
+fed_rates <- read_excel("data/fed_rates.xlsx")
+sugar_prices <- read_excel("data/sugar_prices.xlsx")
+municipios <- st_read("data/BR_Municipios_2021/BR_Municipios_2021.shp")
 
 
 #### Rename variables to make them R-friendly
 # "Cidade" into "municipio"
+municipios <- municipios %>%
+  rename(municipio = NM_MUN)
+
 df <- df %>%
   rename(municipio = Cidade)
+
+# Código do IBGE
+municipios <- municipios %>%
+  rename(ibge = CD_MUN)
+
+# "SIGLA" into "state"
+municipios <- municipios %>%
+  rename(state = SIGLA)
+
+# "Ano"
+sugar_prices <- sugar_prices %>%
+  rename(Ano = Year)
+
+fed_rates <- fed_rates %>%
+  rename(Ano = TIME)
+
+# "Value" 
+fed_rates <- fed_rates %>%
+  rename(fed_rates = Value)
+
+sugar_prices <- sugar_prices %>%
+  rename(sugar_prices = Value)
+
 
 ### Creating new variables
 # Create new variable "state"
@@ -36,25 +65,13 @@ df <- df %>%
 df <- df %>% 
   mutate(municipio = str_sub(municipio, end = -6))
 
+# Delete useless crap from imported datasets
+fed_rates <- select(fed_rates, -LOCATION, -INDICATOR, -SUBJECT, -MEASURE, -FREQUENCY)
+
 ### Create variable with IBGE municipality code
-#Open database with IBGE codes from Munifacil
-arquivo <- system.file("extdata/exemplo.csv", package = "munifacil")
-
-sua_base <- readr::read_csv(arquivo) %>% 
-  dplyr::select(
-    municipio = 1, 
-    uf = 3,
-    ibge = 2
-  ) %>% 
-  dplyr::distinct(municipio, .keep_all = TRUE)
-
 # Create variable that removes Portuguese characters from municipality names
 df$municipios_sem_acentos <- remove_acentos(df$municipio, pattern = "all")
-sua_base$municipios_sem_acentos <- remove_acentos(sua_base$municipio, pattern = "all")
-
-# Capital letters for municipality names withouth Portuguese characters
-df$municipios_sem_acentos <- toupper(df$municipios_sem_acentos)
-
+municipios$municipios_sem_acentos <- remove_acentos(municipios$municipio, pattern = "all")
 
 # Separate dataframe into states
 ac <- df[df$state == "AC", ]
@@ -86,33 +103,33 @@ se <- df[df$state == "SE", ]
 to <- df[df$state == "TO", ]
 
 # Separate IBGE base into states
-ac_ibge <- sua_base[sua_base$uf == "AC", ]
-al_ibge <- sua_base[sua_base$uf == "AL", ]
-ap_ibge <- sua_base[sua_base$uf == "AP", ]
-am_ibge <- sua_base[sua_base$uf == "AM", ]
-ba_ibge <- sua_base[sua_base$uf == "BA", ]
-ce_ibge <- sua_base[sua_base$uf == "CE", ]
-df1_ibge <- sua_base[sua_base$uf == "DF", ]
-es_ibge <- sua_base[sua_base$uf == "ES", ]
-go_ibge <- sua_base[sua_base$uf == "GO", ]
-ma_ibge <- sua_base[sua_base$uf == "MA", ]
-mt_ibge <- sua_base[sua_base$uf == "MT", ]
-ms_ibge <- sua_base[sua_base$uf == "MS", ]
-mg_ibge <- sua_base[sua_base$uf == "MG", ]
-pa_ibge <- sua_base[sua_base$uf == "PA", ]
-pb_ibge <- sua_base[sua_base$uf == "PB", ]
-pr_ibge <- sua_base[sua_base$uf == "PR", ]
-pe_ibge <- sua_base[sua_base$uf == "PE", ]
-pi_ibge <- sua_base[sua_base$uf == "PI", ]
-rj_ibge <- sua_base[sua_base$uf == "RJ", ]
-rn_ibge <- sua_base[sua_base$uf == "RN", ]
-rs_ibge <- sua_base[sua_base$uf == "RS", ]
-ro_ibge <- sua_base[sua_base$uf == "RO", ]
-rr_ibge <- sua_base[sua_base$uf == "RR", ]
-sc_ibge <- sua_base[sua_base$uf == "SC", ]
-sp_ibge <- sua_base[sua_base$uf == "SP", ]
-se_ibge <- sua_base[sua_base$uf == "SE", ]
-to_ibge <- sua_base[sua_base$uf == "TO", ]
+ac_ibge <- municipios[municipios$state == "AC", ]
+al_ibge <- municipios[municipios$state == "AL", ]
+ap_ibge <- municipios[municipios$state == "AP", ]
+am_ibge <- municipios[municipios$state == "AM", ]
+ba_ibge <- municipios[municipios$state == "BA", ]
+ce_ibge <- municipios[municipios$state == "CE", ]
+df1_ibge <- municipios[municipios$state == "DF", ]
+es_ibge <- municipios[municipios$state == "ES", ]
+go_ibge <- municipios[municipios$state == "GO", ]
+ma_ibge <- municipios[municipios$state == "MA", ]
+mt_ibge <- municipios[municipios$state == "MT", ]
+ms_ibge <- municipios[municipios$state == "MS", ]
+mg_ibge <- municipios[municipios$state == "MG", ]
+pa_ibge <- municipios[municipios$state == "PA", ]
+pb_ibge <- municipios[municipios$state == "PB", ]
+pr_ibge <- municipios[municipios$state == "PR", ]
+pe_ibge <- municipios[municipios$state == "PE", ]
+pi_ibge <- municipios[municipios$state == "PI", ]
+rj_ibge <- municipios[municipios$state == "RJ", ]
+rn_ibge <- municipios[municipios$state == "RN", ]
+rs_ibge <- municipios[municipios$state == "RS", ]
+ro_ibge <- municipios[municipios$state == "RO", ]
+rr_ibge <- municipios[municipios$state == "RR", ]
+sc_ibge <- municipios[municipios$state == "SC", ]
+sp_ibge <- municipios[municipios$state == "SP", ]
+se_ibge <- municipios[municipios$state == "SE", ]
+to_ibge <- municipios[municipios$state == "TO", ]
 
 # Merge by municipality in each state
 ac <- merge(ac, ac_ibge, by = "municipios_sem_acentos")
@@ -144,19 +161,111 @@ se <- merge(se, se_ibge, by = "municipios_sem_acentos")
 to <- merge(to, to_ibge, by = "municipios_sem_acentos")
 
 
-### Add FED interest rates
-
-# Read the FED interest rates file into R
-fed_rates <- read.table("path/to/fed_rates_file.txt", header = TRUE)
-
-# Convert the "DATE" column to a Date object
-fed_rates$DATE <- as.Date(fed_rates$DATE, format = "%m/%d/%Y")
-
-# Extract the year from the "DATE" column
-fed_rates$year <- format(fed_rates$DATE, "%Y")
+### Remove dataframes I won't use anymore
+rm(pa_ibge, pi_ibge, rn_ibge, sp_ibge, ac_ibge, ap_ibge, go_ibge, ms_ibge, 
+   df1_ibge, pb_ibge, pr_ibge, ro_ibge, sc_ibge, al_ibge, ba_ibge, ma_ibge, 
+   mt_ibge, to_ibge, es_ibge, pe_ibge, rj_ibge, rr_ibge, se_ibge, am_ibge, 
+   ce_ibge, mg_ibge, rs_ibge)
 
 
+############################## 
+### Add FED interest rates ###
+############################## 
+
+# Rates are Fed's short-term interest rates. 
+# Source: https://data.oecd.org/interest/short-term-interest-rates.htm#indicator-chart
+
+ac <- merge(ac, fed_rates, by = "Ano")
+al <- merge(al, fed_rates, by = "Ano")
+ap <- merge(ap, fed_rates, by = "Ano")
+am <- merge(am, fed_rates, by = "Ano")
+ba <- merge(ba, fed_rates, by = "Ano")
+ce <- merge(ce, fed_rates, by = "Ano")
+df1 <- merge(df1, fed_rates, by = "Ano")
+es <- merge(es, fed_rates, by = "Ano")
+go <- merge(go, fed_rates, by = "Ano")
+ma <- merge(ma, fed_rates, by = "Ano")
+mt <- merge(mt, fed_rates, by = "Ano")
+ms <- merge(ms, fed_rates, by = "Ano")
+mg <- merge(mg, fed_rates, by = "Ano")
+pa <- merge(pa, fed_rates, by = "Ano")
+pb <- merge(pb, fed_rates, by = "Ano")
+pr <- merge(pr, fed_rates, by = "Ano")
+pe <- merge(pe, fed_rates, by = "Ano")
+pi <- merge(pi, fed_rates, by = "Ano")
+rj <- merge(rj, fed_rates, by = "Ano")
+rn <- merge(rn, fed_rates, by = "Ano")
+rs <- merge(rs, fed_rates, by = "Ano")
+ro <- merge(ro, fed_rates, by = "Ano")
+rr <- merge(rr, fed_rates, by = "Ano")
+sc <- merge(sc, fed_rates, by = "Ano")
+sp <- merge(sp, fed_rates, by = "Ano")
+se <- merge(se, fed_rates, by = "Ano")
+to <- merge(to, fed_rates, by = "Ano")
+
+######################## 
+### Add sugar prices ###
+######################## 
+
+# Prices are sugar cane Producer Price Index for Brazil 
+# Source: http://www.fao.org/faostat/en/#data
+
+ac <- merge(ac, sugar_prices, by = "Ano")
+al <- merge(al, sugar_prices, by = "Ano")
+ap <- merge(ap, sugar_prices, by = "Ano")
+am <- merge(am, sugar_prices, by = "Ano")
+ba <- merge(ba, sugar_prices, by = "Ano")
+ce <- merge(ce, sugar_prices, by = "Ano")
+df1 <- merge(df1, sugar_prices, by = "Ano")
+es <- merge(es, sugar_prices, by = "Ano")
+go <- merge(go, sugar_prices, by = "Ano")
+ma <- merge(ma, sugar_prices, by = "Ano")
+mt <- merge(mt, sugar_prices, by = "Ano")
+ms <- merge(ms, sugar_prices, by = "Ano")
+mg <- merge(mg, sugar_prices, by = "Ano")
+pa <- merge(pa, sugar_prices, by = "Ano")
+pb <- merge(pb, sugar_prices, by = "Ano")
+pr <- merge(pr, sugar_prices, by = "Ano")
+pe <- merge(pe, sugar_prices, by = "Ano")
+pi <- merge(pi, sugar_prices, by = "Ano")
+rj <- merge(rj, sugar_prices, by = "Ano")
+rn <- merge(rn, sugar_prices, by = "Ano")
+rs <- merge(rs, sugar_prices, by = "Ano")
+ro <- merge(ro, sugar_prices, by = "Ano")
+rr <- merge(rr, sugar_prices, by = "Ano")
+sc <- merge(sc, sugar_prices, by = "Ano")
+sp <- merge(sp, sugar_prices, by = "Ano")
+se <- merge(se, sugar_prices, by = "Ano")
+to <- merge(to, sugar_prices, by = "Ano")
+
+
+########################## 
+### Final housekeeping ###
+##########################
+
+# Join all these dataframes into one single thing
+combined_df <- bind_rows(ac, al, am, ap, ba, ce, df1, es, go, ma, mg, ms, mt, 
+                         pa, pb, pe, pi, pr, rj, rn, ro, rr, rs, sc, se, sp, to)
+
+
+# Delete useless crap from final dataset
+combined_df <- select(combined_df, -municipios_sem_acentos, -municipio.y, -state.y, -geometry)
+
+# Rename stuff to make it look clean
+combined_df <- combined_df %>%
+  rename(municipio = municipio.x)
+
+combined_df <- combined_df %>%
+  rename(state = state.x)
+
+combined_df <- combined_df %>%
+  rename(area_km2 = AREA_KM2)
+
+### Write the damn dataframe on a damn Excel spreadsheet
+write_xlsx(combined_df, path = "data/import_export_data.xlsx")
 
 
 
-# End of File
+### End of File
+
+
