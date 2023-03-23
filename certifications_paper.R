@@ -239,6 +239,11 @@ se <- merge(se, sugar_prices, by = "Ano")
 to <- merge(to, sugar_prices, by = "Ano")
 
 
+################################# 
+### Create distance variables ###
+################################# 
+
+
 ########################## 
 ### Final housekeeping ###
 ##########################
@@ -246,7 +251,6 @@ to <- merge(to, sugar_prices, by = "Ano")
 # Join all these dataframes into one single thing
 combined_df <- bind_rows(ac, al, am, ap, ba, ce, df1, es, go, ma, mg, ms, mt, 
                          pa, pb, pe, pi, pr, rj, rn, ro, rr, rs, sc, se, sp, to)
-
 
 # Delete useless crap from final dataset
 combined_df <- select(combined_df, -municipios_sem_acentos, -municipio.y, -state.y, -geometry)
