@@ -19,6 +19,7 @@ library(sf)
 library(writexl)
 library(rnaturalearth)
 
+
 ### Read in data
 df <- read_excel("data/Importações e ExportaçõesFINAL.xlsx")
 fed_rates <- read_excel("data/fed_rates.xlsx")
@@ -77,9 +78,9 @@ lookup_table <- data.frame(
                    "Finlândia", "França", "Grécia", "Hungria", "Irlanda", "Itália", "Letônia", "Lituânia", 
                    "Luxemburgo", "Malta", "Países Baixos (Holanda)", "Polônia", "Portugal", 
                    "Romênia", "Suécia", "Tcheca, República"),
-  iso_code = c("DEU", "AUT", "BEL", "BGR", "CYP", "HRV", "DNK", "SVK", "SVN", 
-               "ESP", "EST", "FIN", "FRA", "GRC", "HUN", "IRL", "ITA", "LVA", "LTU", "LUX", 
-               "MLT", "NLD", "POL", "PRT", "ROU", "SWE", "CZE"),
+  iso_code = c("DEU", "AUT", "BEL", "BGR", "CYP", "HRV", "DN1", "SVK", "SVN", 
+               "ESP", "EST", "FI1", "FR1", "GRC", "HUN", "IRL", "ITA", "LVA", "LTU", "LUX", 
+               "MLT", "NL1", "POL", "PRT", "ROU", "SWE", "CZE"),
   stringsAsFactors = FALSE)
 
 # Convert Portuguese country names to ISO country codes using the lookup table
@@ -287,21 +288,25 @@ combined_df <- combined_df %>%
 ### Creating centroid coordinate variables for European countries
 # Get polygons for European countries 
 # (dropping Russia because it is in two continents and therefore screws up my code)
-europe <- ne_countries(continent = "Europe", returnclass = "sf")
-europe <- europe[europe$admin != "Russia", ]
+world <- ne_countries(scale = "medium", returnclass = "sf")
+world <- st_make_valid(world)
 
 # Calculate centroids for European countries
-centroids <- st_centroid(europe)
+centroids <- st_centroid(world)
+
+# Rename Country variable
+world <- world %>% 
+  rename(country = sov_a3)
 
 # Extract the x and y coordinates of each centroid
 coords <- st_coordinates(centroids)
 
 # Create two new variables for the x and y coordinates
-europe$centroid_x_europe <- coords[, 1]
-europe$centroid_y_europe <- coords[, 2]
+world$centroid_x_countries <- coords[, 1]
+world$centroid_y_countries <- coords[, 2]
 
-#Drop remaining variables from the "europe" dataset
-europe <- select(europe, centroid_x_europe, centroid_y_europe, sov_a3)
+#Drop remaining variables from the "world" dataset
+world <- select(world, centroid_x_countries, centroid_y_countries, country)
 
 ### Creating centroid coordinate variables for Brazilian municipalities
 # Calculating centroids for Brazilian municipalities
@@ -316,12 +321,38 @@ combined_df$centroid_x <- coords[, 1]
 combined_df$centroid_y <- coords[, 2]
 
 ### Calculate distance variables
-merged_df <- merge(combined_df, europe, by.x = "country", by.y = "sov_a3", all.x = TRUE)
+# Match coordinate variables to a common variable name
+# get the indices of the matching country codes
+idx <- match(combined_df$country, world$country)
 
-# Select the required variables from the merged dataset
-combined_df <- merged_df[, c("country", "centroid_x_europe", "centroid_y_europe")]
+# extract the centroid_x_countries and centroid_y_countries values
+combined_df$centroid_x_countries <- world$centroid_x_countries[idx]
+combined_df$centroid_y_countries <- world$centroid_y_countries[idx]
 
+# Convert data frame to sf objects
+combined_df_sf <- st_as_sf(combined_df, coords = c("centroid_x", "centroid_y"))
+world_sf <- st_as_sf(combined_df, coords = c("centroid_x_countries", "centroid_y_countries"))
 
+# Set CRS for combined_df_sf and world_sf to a valid CRS, such as WGS84
+combined_df_sf <- st_set_crs(combined_df_sf, "+proj=longlat +datum=WGS84")
+world_sf <- st_set_crs(world_sf, "+proj=longlat +datum=WGS84")
+
+# Transform to a common CRS
+combined_df_sf <- st_transform(combined_df_sf, st_crs(world_sf))
+
+# Calculate Haversine distances
+distances_meters <- st_distance(combined_df_sf, world_sf)
+
+# Find shortest distance and index of matching country
+shortest_distance_idx <- which.min(distances_meters)
+shortest_distance_meters <- distances_meters[shortest_distance_idx]
+
+# Convert meters to kilometers
+shortest_distance_km <- shortest_distance_meters / 1000
+
+# Add shortest distance and matching country to combined_df
+combined_df$shortest_distance_km <- shortest_distance_km
+combined_df$matching_country <- world$country[shortest_distance_idx]
 
 ########################## 
 ### Final Housekeeping ###
