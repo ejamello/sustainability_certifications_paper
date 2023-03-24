@@ -2,7 +2,7 @@
 ## Defending the environment or curbing imports? The trade effects of government-backed voluntary certifications
 ## Authors: Rodrigo Cezar, Eduardo Mello, and Juliana Camargo
 ## Contact: Eduardo.Mello@fgv.br  
-## This version: 2023-03-06
+## This version: 2023-04-24
 ## R version 4.2.2 ("Innocent and Trusting") on Macbook OS 13.3.1 Ventura
 ####
 
@@ -17,6 +17,7 @@ library(stringr)
 library(isgr)
 library(sf)
 library(writexl)
+library(rnaturalearth)
 
 ### Read in data
 df <- read_excel("data/Importações e ExportaçõesFINAL.xlsx")
@@ -67,6 +68,22 @@ df <- df %>%
 
 # Delete useless crap from imported datasets
 fed_rates <- select(fed_rates, -LOCATION, -INDICATOR, -SUBJECT, -MEASURE, -FREQUENCY)
+
+### Replace useless Portuguese country names with international three letter country code
+# Define a lookup table of Portuguese country names and corresponding ISO codes
+lookup_table <- data.frame(
+  country_name = c("Alemanha", "Áustria", "Bélgica", "Bulgária", "Chipre", "Croácia", 
+                   "Dinamarca", "Eslováquia", "Eslovênia", "Espanha", "Estônia", 
+                   "Finlândia", "França", "Grécia", "Hungria", "Irlanda", "Itália", "Letônia", "Lituânia", 
+                   "Luxemburgo", "Malta", "Países Baixos (Holanda)", "Polônia", "Portugal", 
+                   "Romênia", "Suécia", "Tcheca, República"),
+  iso_code = c("DEU", "AUT", "BEL", "BGR", "CYP", "HRV", "DNK", "SVK", "SVN", 
+               "ESP", "EST", "FIN", "FRA", "GRC", "HUN", "IRL", "ITA", "LVA", "LTU", "LUX", 
+               "MLT", "NLD", "POL", "PRT", "ROU", "SWE", "CZE"),
+  stringsAsFactors = FALSE)
+
+# Convert Portuguese country names to ISO country codes using the lookup table
+df$country <- lookup_table$iso_code[match(df$País, lookup_table$country_name)]
 
 ### Create variable with IBGE municipality code
 # Create variable that removes Portuguese characters from municipality names
@@ -239,21 +256,19 @@ se <- merge(se, sugar_prices, by = "Ano")
 to <- merge(to, sugar_prices, by = "Ano")
 
 
-################################# 
-### Create distance variables ###
-################################# 
-
-
-########################## 
-### Final housekeeping ###
-##########################
+#################### 
+### Housekeeping ###
+####################
 
 # Join all these dataframes into one single thing
 combined_df <- bind_rows(ac, al, am, ap, ba, ce, df1, es, go, ma, mg, ms, mt, 
                          pa, pb, pe, pi, pr, rj, rn, ro, rr, rs, sc, se, sp, to)
 
+rm(ac, al, am, ap, ba, ce, df1, es, go, ma, mg, ms, mt, 
+   pa, pb, pe, pi, pr, rj, rn, ro, rr, rs, sc, se, sp, to)
+
 # Delete useless crap from final dataset
-combined_df <- select(combined_df, -municipios_sem_acentos, -municipio.y, -state.y, -geometry)
+combined_df <- select(combined_df, -municipios_sem_acentos, -municipio.y, -state.y)
 
 # Rename stuff to make it look clean
 combined_df <- combined_df %>%
@@ -265,9 +280,55 @@ combined_df <- combined_df %>%
 combined_df <- combined_df %>%
   rename(area_km2 = AREA_KM2)
 
+################################# 
+### Create distance variables ###
+################################# 
+
+### Creating centroid coordinate variables for European countries
+# Get polygons for European countries 
+# (dropping Russia because it is in two continents and therefore screws up my code)
+europe <- ne_countries(continent = "Europe", returnclass = "sf")
+europe <- europe[europe$admin != "Russia", ]
+
+# Calculate centroids for European countries
+centroids <- st_centroid(europe)
+
+# Extract the x and y coordinates of each centroid
+coords <- st_coordinates(centroids)
+
+# Create two new variables for the x and y coordinates
+europe$centroid_x_europe <- coords[, 1]
+europe$centroid_y_europe <- coords[, 2]
+
+#Drop remaining variables from the "europe" dataset
+europe <- select(europe, centroid_x_europe, centroid_y_europe, sov_a3)
+
+### Creating centroid coordinate variables for Brazilian municipalities
+# Calculating centroids for Brazilian municipalities
+# NOTE: This takes forever to run
+centroids_brasil <- st_centroid(combined_df$geometry)
+
+# Extract the x and y coordinates of each centroid 
+coords <- st_coordinates(centroids_brasil)
+
+# Create two new variables for the x and y coordinates
+combined_df$centroid_x <- coords[, 1]
+combined_df$centroid_y <- coords[, 2]
+
+### Calculate distance variables
+merged_df <- merge(combined_df, europe, by.x = "country", by.y = "sov_a3", all.x = TRUE)
+
+# Select the required variables from the merged dataset
+combined_df <- merged_df[, c("country", "centroid_x_europe", "centroid_y_europe")]
+
+
+
+########################## 
+### Final Housekeeping ###
+########################## 
+
 ### Write the damn dataframe on a damn Excel spreadsheet
 write_xlsx(combined_df, path = "data/import_export_data.xlsx")
-
 
 
 ### End of File
