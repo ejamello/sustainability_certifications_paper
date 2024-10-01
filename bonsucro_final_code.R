@@ -16,9 +16,26 @@ library(hrbrthemes)
 library(ggplot2)
 library(panelView)
 library(fect)
+library(datazoom.amazonia)
 
 # Load the data
 data_final <- read.csv("data_final_bonsucro_all.csv")
+
+# Load deforestation data
+deforestation <- datazoom.amazonia::load_prodes(
+  dataset = "deforestation",
+  raw_data = FALSE,
+  language = "pt"
+) %>% 
+  group_by(cod_municipio, ano) %>% 
+  summarise(incremento = sum(incremento))
+
+deforestation <- deforestation %>% 
+  rename(CO_MUN = "cod_municipio",
+         year = "ano")
+
+deforestation <- deforestation %>% 
+  mutate(year = as.integer(year))
 
 # Prepare the data for analysis
 data_final_eeu <- data_final %>%
@@ -44,6 +61,12 @@ data_final_eeu <- left_join(data_final_eeu, data_final_eeu_slice)
 data_final_eeu <- data_final_eeu %>%
   mutate(treated = ifelse(year >= first_treatment_year, 1, 0)) %>%
   filter(year > 2009)
+
+# Merging final dataset with deforestation data
+data_final_eeu <- left_join(data_final_eeu, deforestation, by = c("CO_MUN", "year"))
+
+data_final_eeu <- data_final_eeu %>% 
+  mutate(incremento = ifelse(is.na(incremento),0,incremento))
 
 # Visualize the treatment status over time
 panelview(export_eu ~ treated, data = data_final_eeu, index = c("CO_MUN", "year"),
@@ -187,3 +210,17 @@ plot(out.ife.exp.upper, ylab = "Effect on Exports to the EU (log) - Upper Decile
      type = "gap", show.points = FALSE, main = "")
 dev.off()
 
+
+### EFFECTS ON DEFORESTATION
+dr.overall.deforestation <- att_gt(yname = "incremento",
+                     gname = "first_treatment_year",
+                     idname = "CO_MUN",
+                     tname = "year",
+                     xformla = ~ 1,
+                     biters = 1000,
+                     control_group = "notyettreated",
+                     data = data_final_eeu)
+
+dr.overall.deforestation.eff <- aggte(dr.overall.deforestation, type = "dynamic", na.rm = TRUE)
+
+ggdid(dr.overall.deforestation.eff)
