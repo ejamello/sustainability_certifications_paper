@@ -224,3 +224,64 @@ dr.overall.deforestation <- att_gt(yname = "incremento",
 dr.overall.deforestation.eff <- aggte(dr.overall.deforestation, type = "dynamic", na.rm = TRUE)
 
 ggdid(dr.overall.deforestation.eff)
+
+
+#####################
+# PLACEBO 2013 YEAR #
+#####################
+
+# Assign the placebo treatment year to 2013 for treated municipalities
+data_final_eeu_placebo_2013 <- data_final_eeu %>%
+  mutate(placebo_first_treatment_year = ifelse(bonsucro_treated == 1, 2013, 0))
+
+# Define the placebo treatment variable
+data_final_eeu_placebo_2013 <- data_final_eeu_placebo_2013 %>%
+  mutate(placebo_treated = ifelse(year >= placebo_first_treatment_year & placebo_first_treatment_year != 0, 1, 0))
+
+# Re-run the difference-in-differences analysis with the placebo treatment
+dr.placebo_2013 <- att_gt(yname = "export_eu",
+                          gname = "placebo_first_treatment_year",
+                          idname = "CO_MUN",
+                          tname = "year",
+                          xformla = ~ 1,
+                          biters = 1000,
+                          control_group = "notyettreated",
+                          data = data_final_eeu_placebo_2013)
+
+# Aggregate the treatment effects over time
+dr.placebo.eff_2013 <- aggte(dr.placebo_2013, type = "dynamic", na.rm = TRUE)
+
+# Plot the placebo effects with a clear title
+ggdid(dr.placebo.eff_2013) +
+  ggtitle("Placebo Test Results with Treatment Year in 2013") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+#####################
+# PLACEBO 2015 YEAR #
+#####################
+
+# Assign the placebo treatment year to 2015 for treated municipalities
+data_final_eeu_placebo_2015 <- data_final_eeu %>%
+  mutate(placebo_first_treatment_year = ifelse(bonsucro_treated == 1, 2015, 0))
+
+# Define the placebo treatment variable
+data_final_eeu_placebo_2015 <- data_final_eeu_placebo_2015 %>%
+  mutate(placebo_treated = ifelse(year >= placebo_first_treatment_year & placebo_first_treatment_year != 0, 1, 0))
+
+# Re-run the difference-in-differences analysis with the placebo treatment
+dr.placebo_2015 <- att_gt(yname = "export_eu",
+                          gname = "placebo_first_treatment_year",
+                          idname = "CO_MUN",
+                          tname = "year",
+                          xformla = ~ 1,
+                          biters = 1000,
+                          control_group = "notyettreated",
+                          data = data_final_eeu_placebo_2015)
+
+# Aggregate the treatment effects over time
+dr.placebo.eff_2015 <- aggte(dr.placebo_2015, type = "dynamic", na.rm = TRUE)
+
+# Plot the placebo effects with a clear title
+ggdid(dr.placebo.eff_2015) +
+  ggtitle("Placebo Test Results with Treatment Year in 2015") +
+  theme(plot.title = element_text(hjust = 0.5))
